@@ -10,6 +10,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
+import time
 import requests
 
 TIMESLICE_DIR = Path("usgs_timeslices")
@@ -137,6 +138,7 @@ def download_file(url: str) -> None:
 
 def main() -> None:
     """Download USGS timeslice files in parallel, based on user inputted start and end datetimes."""
+    start_time = time.perf_counter()
 
     if not TIMESLICE_DIR.exists():
         TIMESLICE_DIR.mkdir(parents=True, exist_ok=True)
@@ -168,14 +170,24 @@ def main() -> None:
     with ThreadPoolExecutor(max_workers=cpu_count) as executor:
         executor.map(download_file, urls)
 
-    downloaded = [str(file) for file in Path(".").glob("*.ncdf") if file.is_file()]
+    downloaded = [str(file) for file in TIMESLICE_DIR.glob("*.ncdf") if file.is_file()]
     num_downloaded = len(downloaded)
     num_urls = len(urls)
+    total_size = sum(os.path.getsize(f) for f in downloaded)
 
     logging.info(
         "Successfully downloaded %d USGS timeslices out of %d", num_downloaded, num_urls
     )
+    logging.info(
+        "Total size of all downloaded timeslices: %d bytes", total_size
+    )
 
+    end_time = time.perf_counter()
+    execution_time = end_time - start_time
+
+    logging.info(
+        "Code took %.6f seconds to execute.", execution_time
+    )
 
 if __name__ == "__main__":
     main()
